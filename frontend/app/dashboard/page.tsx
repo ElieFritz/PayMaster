@@ -228,7 +228,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </select>
               <input
                 name="country"
-                placeholder="Pays (CM, SN...)"
+                placeholder="Pays (CM, CF, TD...)"
                 defaultValue={searchParams.country || ''}
                 className="h-11 rounded-md border border-[hsl(var(--border))] bg-black/25 px-3 text-sm uppercase"
               />

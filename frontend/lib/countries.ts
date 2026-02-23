@@ -1,37 +1,50 @@
-export const COUNTRIES = [
-  { code: 'CM', label: 'Cameroun', currency: 'XAF', provider: 'NOTCHPAY' },
-  { code: 'SN', label: 'Senegal', currency: 'XOF', provider: 'ZIKOPAY' },
-  { code: 'CI', label: "Cote d'Ivoire", currency: 'XOF', provider: 'ZIKOPAY' },
-  { code: 'BJ', label: 'Benin', currency: 'XOF', provider: 'ZIKOPAY' },
-  { code: 'TG', label: 'Togo', currency: 'XOF', provider: 'ZIKOPAY' },
-];
+export const SUPPORTED_COUNTRY_CODES = ['CM', 'CF', 'TD', 'CG', 'GQ', 'GA'] as const;
 
-export const CURRENCY_BY_COUNTRY: Record<string, 'XAF' | 'XOF'> = {
-  CM: 'XAF',
+export type SupportedCountryCode = (typeof SUPPORTED_COUNTRY_CODES)[number];
+
+type SupportedCurrency = 'XAF' | 'XOF';
+type SupportedProvider = 'NOTCHPAY' | 'ZIKOPAY';
+
+type CountryConfig = {
+  code: SupportedCountryCode;
+  label: string;
+  currency: SupportedCurrency;
+  provider: SupportedProvider;
 };
 
-const FORCED_ZIKOPAY_CURRENCY = resolveForcedZikoCurrency();
+const COUNTRY_CONFIG: Record<SupportedCountryCode, CountryConfig> = {
+  CM: { code: 'CM', label: 'Cameroun', currency: 'XAF', provider: 'NOTCHPAY' },
+  CF: {
+    code: 'CF',
+    label: 'Republique centrafricaine',
+    currency: 'XAF',
+    provider: 'ZIKOPAY',
+  },
+  TD: { code: 'TD', label: 'Tchad', currency: 'XAF', provider: 'ZIKOPAY' },
+  CG: { code: 'CG', label: 'Congo', currency: 'XAF', provider: 'ZIKOPAY' },
+  GQ: { code: 'GQ', label: 'Guinee equatoriale', currency: 'XAF', provider: 'ZIKOPAY' },
+  GA: { code: 'GA', label: 'Gabon', currency: 'XAF', provider: 'ZIKOPAY' },
+};
 
-export function resolveCurrency(countryCode: string): 'XAF' | 'XOF' {
-  const normalizedCountry = countryCode.toUpperCase();
+export const COUNTRIES: CountryConfig[] = SUPPORTED_COUNTRY_CODES.map(
+  (countryCode) => COUNTRY_CONFIG[countryCode],
+);
 
-  if (normalizedCountry !== 'CM' && FORCED_ZIKOPAY_CURRENCY) {
-    return FORCED_ZIKOPAY_CURRENCY;
-  }
-
-  return CURRENCY_BY_COUNTRY[normalizedCountry] || 'XOF';
+export function resolveCurrency(countryCode: string): SupportedCurrency {
+  const config = COUNTRY_CONFIG[normalizeCountryCode(countryCode) as SupportedCountryCode];
+  return config?.currency || 'XAF';
 }
 
-export function resolveProvider(countryCode: string): 'NOTCHPAY' | 'ZIKOPAY' {
-  return countryCode.toUpperCase() === 'CM' ? 'NOTCHPAY' : 'ZIKOPAY';
+export function resolveProvider(countryCode: string): SupportedProvider {
+  const config = COUNTRY_CONFIG[normalizeCountryCode(countryCode) as SupportedCountryCode];
+  return config?.provider || 'ZIKOPAY';
 }
 
-function resolveForcedZikoCurrency(): 'XAF' | 'XOF' | null {
-  const value = (process.env.NEXT_PUBLIC_ZIKOPAY_FORCE_CURRENCY || '').trim().toUpperCase();
+export function isSupportedCountry(countryCode: string): boolean {
+  const normalized = normalizeCountryCode(countryCode);
+  return (SUPPORTED_COUNTRY_CODES as readonly string[]).includes(normalized);
+}
 
-  if (value === 'XAF' || value === 'XOF') {
-    return value;
-  }
-
-  return null;
+function normalizeCountryCode(countryCode: string): string {
+  return countryCode.trim().toUpperCase();
 }

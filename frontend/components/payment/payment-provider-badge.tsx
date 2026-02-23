@@ -21,9 +21,7 @@ export function PaymentProviderBadge({ country }: { country: string }) {
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
           {provider === 'NOTCHPAY'
             ? 'Cameroun detecte: NotchPay actif et XAF force.'
-            : currency === 'XAF'
-              ? 'Pays UEMOA: ZikoPay actif avec bascule devise XAF (configuration wallet).'
-              : 'Pays UEMOA: ZikoPay actif et XOF force.'}
+            : 'Pays d Afrique centrale (hors Cameroun): ZikoPay actif en XAF.'}
         </p>
       </div>
     </div>

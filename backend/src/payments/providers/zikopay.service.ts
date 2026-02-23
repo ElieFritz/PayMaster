@@ -16,12 +16,7 @@ import {
   PaymentWebhookEvent,
 } from '../interfaces/payment-strategy.interface';
 
-const SUPPORTED_OPERATORS_BY_COUNTRY: Record<string, string[]> = {
-  CI: ['orange_ci', 'mtn_ci', 'moov_ci', 'wave_ci'],
-  SN: ['orange_sn', 'free_money_sn', 'expresso_sn'],
-  BJ: ['mtn_bj', 'moov_bj'],
-  TG: ['t_money_tg'],
-};
+const SUPPORTED_OPERATORS_BY_COUNTRY: Record<string, string[]> = {};
 
 @Injectable()
 export class ZikoPayService implements PaymentStrategy {
@@ -409,10 +404,7 @@ export class ZikoPayService implements PaymentStrategy {
     const supportedByCountry = SUPPORTED_OPERATORS_BY_COUNTRY[country] || [];
 
     if (supportedByCountry.length === 0) {
-      throw new PaymentGatewayException(
-        this.provider,
-        `No ZikoPay operators configured for country ${country}.`,
-      );
+      return;
     }
 
     if (!supportedByCountry.includes(operator)) {

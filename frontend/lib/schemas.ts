@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SUPPORTED_COUNTRY_CODES } from './countries';
 
 export const invoiceLineSchema = z.object({
   category: z.enum(['BOOST', 'WEB', 'ADS', 'OTHER']),
@@ -9,7 +10,7 @@ export const invoiceLineSchema = z.object({
 });
 
 export const invoiceFormSchema = z.object({
-  country: z.string().length(2),
+  country: z.enum(SUPPORTED_COUNTRY_CODES),
   currency: z.enum(['XAF', 'XOF']),
   customerName: z.string().min(2, 'Nom client requis'),
   customerEmail: z.string().email('Email invalide'),

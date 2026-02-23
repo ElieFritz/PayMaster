@@ -4,6 +4,7 @@ import {
   IsArray,
   IsEmail,
   IsEnum,
+  IsIn,
   IsOptional,
   IsString,
   Length,
@@ -12,6 +13,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import {
+  CEMAC_COUNTRY_CODES,
+  SUPPORTED_CEMAC_COUNTRIES_LABEL,
+} from '../../common/constants/countries';
 import { Currency } from '../../common/enums/currency.enum';
 import { InvoiceLineDto, InvoiceMetadataDto, ServiceCategory } from './invoice-line.dto';
 
@@ -69,6 +74,9 @@ export class CreateInvoiceDto {
 
   @IsString()
   @Length(2, 2)
+  @IsIn(CEMAC_COUNTRY_CODES, {
+    message: `Country must be one of: ${SUPPORTED_CEMAC_COUNTRIES_LABEL}.`,
+  })
   country!: string;
 
   @IsOptional()

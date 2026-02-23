@@ -354,24 +354,31 @@ export function InvoiceForm() {
 
           <div className="space-y-2">
             <Label htmlFor="customerOperator">Operateur mobile money</Label>
-            <Select
-              id="customerOperator"
-              {...register('metadata.customerOperator')}
-              disabled={country === 'CM' || operatorOptions.length === 0}
-            >
-              <option value="">
-                {country === 'CM'
-                  ? 'Non requis pour Cameroun (NotchPay)'
-                  : operatorOptions.length === 0
-                    ? 'Aucun operateur configure pour ce pays'
-                    : 'Choisir un operateur'}
-              </option>
-              {operatorOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+            {country === 'CM' ? (
+              <Select id="customerOperator" {...register('metadata.customerOperator')} disabled>
+                <option value="">Non requis pour Cameroun (NotchPay)</option>
+              </Select>
+            ) : operatorOptions.length > 0 ? (
+              <Select id="customerOperator" {...register('metadata.customerOperator')}>
+                <option value="">Choisir un operateur</option>
+                {operatorOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Input
+                id="customerOperator"
+                placeholder="Code operateur ZikoPay (ex: airtel_xx)"
+                {...register('metadata.customerOperator')}
+              />
+            )}
+            {country !== 'CM' && operatorOptions.length === 0 && (
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Aucun operateur preconfigure pour ce pays. Renseigne le code operateur valide ZikoPay.
+              </p>
+            )}
             {errors.metadata?.customerOperator?.message && (
               <p className="text-xs text-rose-300">{errors.metadata.customerOperator.message}</p>
             )}

@@ -1,8 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import {
+  getCemacCountryConfig,
+  normalizeCountryCode,
+  SUPPORTED_CEMAC_COUNTRIES_LABEL,
+} from '../common/constants/countries';
 import { Currency } from '../common/enums/currency.enum';
 import { InvoiceStatus } from '../common/enums/invoice-status.enum';
 import { PaymentProvider } from '../common/enums/payment-provider.enum';
@@ -37,15 +41,19 @@ export class InvoicesService {
     @InjectRepository(Invoice)
     private readonly invoicesRepository: Repository<Invoice>,
     private readonly invoicePdfService: InvoicePdfService,
-    private readonly configService: ConfigService,
   ) {}
 
   async create(createInvoiceDto: CreateInvoiceDto): Promise<Invoice> {
-    const country = createInvoiceDto.country.toUpperCase();
-    const currency = this.resolveCurrency(country);
-    const forcedCurrencyEnabled = this.resolveForcedCurrency(country) !== null;
+    const country = normalizeCountryCode(createInvoiceDto.country);
+    if (!getCemacCountryConfig(country)) {
+      throw new BadRequestException(
+        `Country ${country} is not supported. Supported countries: ${SUPPORTED_CEMAC_COUNTRIES_LABEL}.`,
+      );
+    }
 
-    if (createInvoiceDto.currency && createInvoiceDto.currency !== currency && !forcedCurrencyEnabled) {
+    const currency = this.resolveCurrency(country);
+
+    if (createInvoiceDto.currency && createInvoiceDto.currency !== currency) {
       throw new BadRequestException('Currency does not match the selected country.');
     }
 
@@ -252,30 +260,15 @@ export class InvoicesService {
   }
 
   private resolveCurrency(country: string): Currency {
-    const forcedCurrency = this.resolveForcedCurrency(country);
-    if (forcedCurrency) {
-      return forcedCurrency;
+    const countryConfig = getCemacCountryConfig(country);
+
+    if (!countryConfig) {
+      throw new BadRequestException(
+        `Country ${country} is not supported. Supported countries: ${SUPPORTED_CEMAC_COUNTRIES_LABEL}.`,
+      );
     }
 
-    return country === 'CM' ? Currency.XAF : Currency.XOF;
-  }
-
-  private resolveForcedCurrency(country: string): Currency | null {
-    if (country === 'CM') {
-      return null;
-    }
-
-    const raw = this.configService.get<string>('ZIKOPAY_FORCE_CURRENCY', '').trim().toUpperCase();
-
-    if (raw === Currency.XAF) {
-      return Currency.XAF;
-    }
-
-    if (raw === Currency.XOF) {
-      return Currency.XOF;
-    }
-
-    return null;
+    return countryConfig.currency;
   }
 
   private generateReference(country: string): string {
