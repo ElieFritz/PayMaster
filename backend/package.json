@@ -18,6 +18,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@nestjs/cli": "^10.4.9",
     "@nestjs/bullmq": "^10.2.3",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",
@@ -35,7 +36,6 @@
     "typeorm": "^0.3.21"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
     "@nestjs/testing": "^10.4.15",
     "@types/express": "^5.0.0",
