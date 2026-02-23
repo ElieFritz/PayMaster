@@ -1,0 +1,34 @@
+<svg width="900" height="320" viewBox="0 0 900 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bpBlueA" x1="16%" y1="7%" x2="90%" y2="92%">
+      <stop offset="0%" stop-color="#2A86F7" />
+      <stop offset="100%" stop-color="#0D4CB8" />
+    </linearGradient>
+    <linearGradient id="bpBlueB" x1="12%" y1="6%" x2="88%" y2="95%">
+      <stop offset="0%" stop-color="#54A7FF" />
+      <stop offset="100%" stop-color="#1258D8" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(20, 8)">
+    <path
+      d="M56 282V18H250C332 18 378 50 378 101C378 152 332 184 250 184H155V249C155 275 137 296 109 308L56 304V282Z"
+      fill="url(#bpBlueA)"
+    />
+    <path
+      d="M247 18H345C463 18 535 74 535 151C535 228 463 284 345 284H182V221H345C425 221 474 190 474 151C474 112 425 81 345 81H247V18Z"
+      fill="url(#bpBlueB)"
+    />
+    <path
+      d="M155 81H253C304 81 336 62 336 31V30C336 22 334 20 328 18H155V81Z"
+      fill="#FFFFFF"
+    />
+  </g>
+
+  <text x="330" y="232" text-anchor="middle" font-size="68" font-weight="800" font-family="Montserrat, Poppins, Arial, sans-serif" fill="#0E4AAC" letter-spacing="2">
+    BOOST
+  </text>
+  <text x="470" y="298" text-anchor="middle" font-size="68" font-weight="800" font-family="Montserrat, Poppins, Arial, sans-serif" fill="#0E4AAC" letter-spacing="2">
+    PERFORMERS
+  </text>
+</svg>

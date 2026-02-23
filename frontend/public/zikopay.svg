@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="56" viewBox="0 0 220 56" fill="none">
+  <rect x="1" y="1" width="218" height="54" rx="10" fill="#101820" stroke="#D1B56B" stroke-width="2"/>
+  <path d="M30 17L39 28L30 39H20L29 28L20 17H30Z" fill="#D1B56B"/>
+  <text x="50" y="34" fill="#F5E2B8" font-size="18" font-family="Arial, sans-serif" font-weight="700">ZIKOPAY</text>
+</svg>
