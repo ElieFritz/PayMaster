@@ -51,6 +51,11 @@ Dans les variables d environnement Render (service backend):
 - `RESEND_FROM=no-reply@boost-performers.com`
 - `FRONTEND_URL=https://<votre-vercel-app>.vercel.app`
 
+Notes production:
+- Backend public URL actuelle: `https://paymaster-u6z2.onrender.com`
+- CORS backend: renseigner `FRONTEND_URL` avec vos domaines frontend, separes par virgule (ex: `https://<app>.vercel.app,http://localhost:3000`).
+- Cote frontend, utiliser `PAYMASTER_BACKEND_URL=https://paymaster-u6z2.onrender.com`.
+
 ### 3. Lancer la migration en production
 
 Depuis un shell Render (ou pipeline CI/CD) dans `backend/`:

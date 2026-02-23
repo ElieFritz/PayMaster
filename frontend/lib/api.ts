@@ -1,4 +1,7 @@
-const FALLBACK_BACKEND_URL = 'http://localhost:4000';
+const FALLBACK_BACKEND_URL =
+  process.env.NODE_ENV === 'production'
+    ? 'https://paymaster-u6z2.onrender.com'
+    : 'http://localhost:4000';
 
 export function getBackendUrl(): string {
   return process.env.PAYMASTER_BACKEND_URL || FALLBACK_BACKEND_URL;
