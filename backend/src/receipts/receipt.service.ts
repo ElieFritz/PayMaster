@@ -23,7 +23,17 @@ export class ReceiptService {
       return;
     }
 
-    const pdf = await this.receiptPdfService.generatePdf(invoice);
+    let pdf: Buffer | undefined;
+
+    try {
+      pdf = await this.receiptPdfService.generatePdf(invoice);
+    } catch (error) {
+      this.logger.error(
+        `Failed to generate receipt PDF for invoice ${invoice.reference}. Sending email without attachment.`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
     await this.receiptMailerService.sendInvoiceReceipt(invoice, pdf);
 
     this.logger.log(`Receipt sent for invoice ${invoice.reference}`);
