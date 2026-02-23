@@ -5,6 +5,7 @@ dist/
 **/dist/
 .next/
 **/.next/
+*.tsbuildinfo
 
 .env
 .env.local
