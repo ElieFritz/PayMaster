@@ -12,6 +12,33 @@ function rawBodySaver(req: RequestWithRawBody, _res: Response, buffer: Buffer): 
   }
 }
 
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, '');
+}
+
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function matchesOrigin(origin: string, pattern: string): boolean {
+  if (!pattern.includes('*')) {
+    return origin === pattern;
+  }
+
+  const expression = new RegExp(`^${escapeRegex(pattern).replace(/\\\*/g, '.*')}$`, 'i');
+  return expression.test(origin);
+}
+
+function resolveAllowedOrigins(): string[] {
+  const rawOrigins = [process.env.CORS_ALLOWED_ORIGINS, process.env.FRONTEND_URL]
+    .filter((value): value is string => typeof value === 'string')
+    .flatMap((value) => value.split(','))
+    .map((origin) => normalizeOrigin(origin))
+    .filter(Boolean);
+
+  return Array.from(new Set(rawOrigins));
+}
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
@@ -26,14 +53,30 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const frontendOrigins = (process.env.FRONTEND_URL || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const allowedOrigins = resolveAllowedOrigins();
 
   app.enableCors({
-    origin: frontendOrigins.length > 0 ? frontendOrigins : true,
+    origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+      if (!origin || allowedOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+      const isAllowed = allowedOrigins.some((allowedOrigin) =>
+        matchesOrigin(normalizedOrigin, allowedOrigin),
+      );
+
+      if (isAllowed) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+    },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   const port = Number(process.env.PORT || 4000);

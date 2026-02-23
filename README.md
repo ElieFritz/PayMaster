@@ -49,12 +49,14 @@ Dans les variables d environnement Render (service backend):
 - `ZIKOPAY_WEBHOOK_SECRET=...`
 - `RESEND_API_KEY=...`
 - `RESEND_FROM=no-reply@boost-performers.com`
-- `FRONTEND_URL=https://<votre-vercel-app>.vercel.app`
+- `FRONTEND_URL=https://<votre-frontend>.vercel.app`
+- `CORS_ALLOWED_ORIGINS=https://<votre-frontend>.vercel.app,http://localhost:3000`
 
 Notes production:
 - Backend public URL actuelle: `https://paymaster-u6z2.onrender.com`
-- CORS backend: renseigner `FRONTEND_URL` avec vos domaines frontend, separes par virgule (ex: `https://<app>.vercel.app,http://localhost:3000`).
+- CORS backend: vous pouvez utiliser `FRONTEND_URL` ou `CORS_ALLOWED_ORIGINS` (supporte une liste separee par virgule et les patterns type `https://*.vercel.app`).
 - Cote frontend, utiliser `PAYMASTER_BACKEND_URL=https://paymaster-u6z2.onrender.com`.
+- Render backend: `Build Command = npm ci && npm run build`, `Start Command = npm run start:prod`.
 
 ### 3. Lancer la migration en production
 
