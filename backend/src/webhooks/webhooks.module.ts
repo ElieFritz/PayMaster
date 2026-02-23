@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { RECEIPT_QUEUE } from '../common/constants/queues';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { ReceiptCoreModule } from '../receipts/receipt-core.module';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 
@@ -21,6 +22,7 @@ const redisEnabled = resolveRedisEnabled();
   imports: [
     PaymentsModule,
     InvoicesModule,
+    ReceiptCoreModule,
     ...(redisEnabled
       ? [
           BullModule.registerQueue({

@@ -57,6 +57,7 @@ Notes production:
 - CORS backend: vous pouvez utiliser `FRONTEND_URL` ou `CORS_ALLOWED_ORIGINS` (supporte une liste separee par virgule et les patterns type `https://*.vercel.app`).
 - Cote frontend, utiliser `PAYMASTER_BACKEND_URL=https://paymaster-u6z2.onrender.com`.
 - Render backend: `Build Command = npm ci && npm run build`, `Start Command = npm run start:prod`.
+- Verification email recu: endpoint manuel `POST /payments/invoices/:id/send-receipt` (facture `PAID` requise).
 
 ### 3. Lancer la migration en production
 

@@ -59,6 +59,11 @@ export class PaymentsController {
     return this.paymentsService.syncInvoiceStatus(params.id, body);
   }
 
+  @Post('invoices/:id/send-receipt')
+  sendReceipt(@Param() params: InvoiceIdParamDto) {
+    return this.paymentsService.resendReceipt(params.id);
+  }
+
   private buildCsv(items: PaymentTransaction[]): string {
     const headers = [
       'id',

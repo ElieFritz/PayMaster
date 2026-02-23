@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { RECEIPT_QUEUE } from '../common/constants/queues';
 import { InvoicesModule } from '../invoices/invoices.module';
+import { ReceiptCoreModule } from '../receipts/receipt-core.module';
 import { PaymentTransaction } from './payment-transaction.entity';
 import { PaymentTransactionsService } from './payment-transactions.service';
 import { PaymentStrategyFactory } from './payment-strategy.factory';
@@ -25,6 +26,7 @@ const redisEnabled = resolveRedisEnabled();
 @Module({
   imports: [
     InvoicesModule,
+    ReceiptCoreModule,
     TypeOrmModule.forFeature([PaymentTransaction]),
     ...(redisEnabled
       ? [

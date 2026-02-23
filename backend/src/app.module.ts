@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { buildTypeOrmOptions } from './database/typeorm-options';
 import { InvoicesModule } from './invoices/invoices.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ReceiptCoreModule } from './receipts/receipt-core.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 
@@ -42,6 +43,7 @@ const redisEnabled = resolveRedisEnabled();
           TYPEORM_SYNCHRONIZE: configService.get<string>('TYPEORM_SYNCHRONIZE'),
         }),
     }),
+    ReceiptCoreModule,
     InvoicesModule,
     PaymentsModule,
     WebhooksModule,

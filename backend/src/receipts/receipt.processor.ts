@@ -3,10 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 
 import { RECEIPT_QUEUE } from '../common/constants/queues';
-import { InvoiceStatus } from '../common/enums/invoice-status.enum';
-import { InvoicesService } from '../invoices/invoices.service';
-import { ReceiptMailerService } from './receipt-mailer.service';
-import { ReceiptPdfService } from './receipt-pdf.service';
+import { ReceiptService } from './receipt.service';
 
 type ReceiptJobData = {
   invoiceId: string;
@@ -16,11 +13,7 @@ type ReceiptJobData = {
 export class ReceiptProcessor extends WorkerHost {
   private readonly logger = new Logger(ReceiptProcessor.name);
 
-  constructor(
-    private readonly invoicesService: InvoicesService,
-    private readonly receiptPdfService: ReceiptPdfService,
-    private readonly receiptMailerService: ReceiptMailerService,
-  ) {
+  constructor(private readonly receiptService: ReceiptService) {
     super();
   }
 
@@ -30,16 +23,6 @@ export class ReceiptProcessor extends WorkerHost {
       return;
     }
 
-    const invoice = await this.invoicesService.findOneById(job.data.invoiceId);
-
-    if (invoice.status !== InvoiceStatus.PAID) {
-      this.logger.warn(`Skipping receipt for invoice ${invoice.id} because status=${invoice.status}`);
-      return;
-    }
-
-    const pdf = await this.receiptPdfService.generatePdf(invoice);
-    await this.receiptMailerService.sendInvoiceReceipt(invoice, pdf);
-
-    this.logger.log(`Receipt sent for invoice ${invoice.reference}`);
+    await this.receiptService.sendPaidInvoiceReceipt(job.data.invoiceId);
   }
 }

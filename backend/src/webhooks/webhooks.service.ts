@@ -1,32 +1,30 @@
-import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
-  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Queue } from 'bullmq';
 
-import { RECEIPT_QUEUE } from '../common/constants/queues';
 import { InvoiceStatus } from '../common/enums/invoice-status.enum';
 import { PaymentProvider } from '../common/enums/payment-provider.enum';
 import { InvoicesService } from '../invoices/invoices.service';
 import { PaymentStrategy } from '../payments/interfaces/payment-strategy.interface';
 import { PaymentStrategyFactory } from '../payments/payment-strategy.factory';
 import { PaymentTransactionsService } from '../payments/payment-transactions.service';
+import { ReceiptService } from '../receipts/receipt.service';
 
 @Injectable()
 export class WebhooksService {
+  private readonly logger = new Logger(WebhooksService.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly invoicesService: InvoicesService,
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
     private readonly paymentTransactionsService: PaymentTransactionsService,
-    @Optional()
-    @InjectQueue(RECEIPT_QUEUE)
-    private readonly receiptQueue?: Queue,
+    private readonly receiptService: ReceiptService,
   ) {}
 
   async handleWebhook(
@@ -71,20 +69,15 @@ export class WebhooksService {
 
     await this.paymentTransactionsService.upsertFromWebhook(invoice, strategy.provider, event);
 
-    if (!wasPaid && updatedInvoice.status === InvoiceStatus.PAID && this.receiptQueue) {
-      await this.receiptQueue.add(
-        'send-receipt',
-        { invoiceId: updatedInvoice.id },
-        {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 5000,
-          },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-      );
+    if (!wasPaid && updatedInvoice.status === InvoiceStatus.PAID) {
+      try {
+        await this.receiptService.sendPaidInvoiceReceipt(updatedInvoice.id);
+      } catch (error) {
+        this.logger.error(
+          `Failed to send receipt for invoice ${updatedInvoice.reference}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
     }
   }
 

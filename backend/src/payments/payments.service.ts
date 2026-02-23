@@ -1,11 +1,9 @@
-import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 
-import { RECEIPT_QUEUE } from '../common/constants/queues';
 import { Currency } from '../common/enums/currency.enum';
 import { InvoiceStatus } from '../common/enums/invoice-status.enum';
 import { InvoicesService } from '../invoices/invoices.service';
+import { ReceiptService } from '../receipts/receipt.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { SyncPaymentStatusDto } from './dto/sync-payment-status.dto';
 import { PaymentStrategyFactory } from './payment-strategy.factory';
@@ -13,13 +11,13 @@ import { PaymentTransactionsService } from './payment-transactions.service';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
     private readonly paymentTransactionsService: PaymentTransactionsService,
-    @Optional()
-    @InjectQueue(RECEIPT_QUEUE)
-    private readonly receiptQueue?: Queue,
+    private readonly receiptService: ReceiptService,
   ) {}
 
   async initiatePayment(initiatePaymentDto: InitiatePaymentDto) {
@@ -155,24 +153,15 @@ export class PaymentsService {
       raw: providerStatus.raw,
     });
 
-    if (
-      previousStatus !== InvoiceStatus.PAID &&
-      updatedInvoice.status === InvoiceStatus.PAID &&
-      this.receiptQueue
-    ) {
-      await this.receiptQueue.add(
-        'send-receipt',
-        { invoiceId: updatedInvoice.id },
-        {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 5000,
-          },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-      );
+    if (previousStatus !== InvoiceStatus.PAID && updatedInvoice.status === InvoiceStatus.PAID) {
+      try {
+        await this.receiptService.sendPaidInvoiceReceipt(updatedInvoice.id);
+      } catch (error) {
+        this.logger.error(
+          `Failed to send receipt for invoice ${updatedInvoice.reference}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
     }
 
     return {
@@ -183,6 +172,30 @@ export class PaymentsService {
       previousStatus,
       currentStatus: updatedInvoice.status,
       syncedAt: new Date().toISOString(),
+    };
+  }
+
+  async resendReceipt(invoiceId: string) {
+    const invoice = await this.invoicesService.findOneById(invoiceId);
+
+    if (invoice.status !== InvoiceStatus.PAID) {
+      throw new BadRequestException('Invoice must be PAID before sending a receipt.');
+    }
+
+    try {
+      await this.receiptService.sendPaidInvoiceReceipt(invoice.id);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to send receipt email at the moment.';
+      throw new InternalServerErrorException(message);
+    }
+
+    return {
+      invoiceId: invoice.id,
+      reference: invoice.reference,
+      status: invoice.status,
+      recipient: invoice.customerEmail,
+      sentAt: new Date().toISOString(),
     };
   }
 
