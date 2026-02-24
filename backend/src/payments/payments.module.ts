@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from '../auth/auth.module';
 import { RECEIPT_QUEUE } from '../common/constants/queues';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { ReceiptCoreModule } from '../receipts/receipt-core.module';
@@ -25,6 +26,7 @@ const redisEnabled = resolveRedisEnabled();
 
 @Module({
   imports: [
+    AuthModule,
     InvoicesModule,
     ReceiptCoreModule,
     TypeOrmModule.forFeature([PaymentTransaction]),
