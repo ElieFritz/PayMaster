@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { LEGAL_MENTIONS, RECEIPT_TERMS } from '../common/constants/legal';
+import { launchPdfBrowser } from '../common/utils/puppeteer-browser';
 import { Invoice } from '../invoices/invoice.entity';
-import puppeteer from 'puppeteer';
 
 @Injectable()
 export class ReceiptPdfService {
   async generatePdf(invoice: Invoice): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    const browser = await launchPdfBrowser();
 
     try {
       const page = await browser.newPage();

@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import puppeteer from 'puppeteer';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 
 import { LEGAL_MENTIONS, RECEIPT_TERMS } from '../common/constants/legal';
+import { launchPdfBrowser } from '../common/utils/puppeteer-browser';
 import { Invoice } from './invoice.entity';
 
 type InvoiceLine = {
@@ -14,13 +14,13 @@ type InvoiceLine = {
 
 @Injectable()
 export class InvoicePdfService {
+  private readonly logger = new Logger(InvoicePdfService.name);
+
   async generateInvoicePdf(invoice: Invoice): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    let browser: Awaited<ReturnType<typeof launchPdfBrowser>> | null = null;
 
     try {
+      browser = await launchPdfBrowser();
       const page = await browser.newPage();
       await page.setContent(this.renderHtml(invoice), { waitUntil: 'networkidle0' });
 
@@ -36,8 +36,16 @@ export class InvoicePdfService {
       });
 
       return Buffer.isBuffer(pdfBytes) ? pdfBytes : Buffer.from(pdfBytes);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to generate invoice PDF for ${invoice.reference}: ${message}`);
+      throw new ServiceUnavailableException(
+        'Invoice PDF generation is temporarily unavailable. Please try again shortly.',
+      );
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 
