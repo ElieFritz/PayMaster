@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { AuthModule } from './auth/auth.module';
 import { buildTypeOrmOptions } from './database/typeorm-options';
 import { InvoicesModule } from './invoices/invoices.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -43,6 +44,7 @@ const redisEnabled = resolveRedisEnabled();
           TYPEORM_SYNCHRONIZE: configService.get<string>('TYPEORM_SYNCHRONIZE'),
         }),
     }),
+    AuthModule,
     ReceiptCoreModule,
     InvoicesModule,
     PaymentsModule,

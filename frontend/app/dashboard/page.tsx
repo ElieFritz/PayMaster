@@ -1,9 +1,12 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 import { InvoiceStatusPill } from '@/components/invoice/invoice-status-pill';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { getBackendUrl } from '@/lib/api';
+import { fetchBackendRaw } from '@/lib/api';
+import { ACCESS_TOKEN_COOKIE, USER_EMAIL_COOKIE, USER_ROLE_COOKIE, UserRole } from '@/lib/auth';
 import { InvoiceStats, InvoicesResponse, PaymentTransactionsResponse } from '@/lib/schemas';
 
 type DashboardPageProps = {
@@ -15,6 +18,7 @@ type DashboardPageProps = {
     country?: string;
     fromDate?: string;
     toDate?: string;
+    forbidden?: string;
   };
 };
 
@@ -102,9 +106,11 @@ function pageHref(
   return `/dashboard?${params.toString()}`;
 }
 
-async function getStats(): Promise<InvoiceStats> {
-  const response = await fetch(`${getBackendUrl()}/invoices/stats/overview`, {
-    cache: 'no-store',
+async function getStats(accessToken: string): Promise<InvoiceStats> {
+  const response = await fetchBackendRaw('/invoices/stats/overview', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 
   if (!response.ok) {
@@ -114,9 +120,14 @@ async function getStats(): Promise<InvoiceStats> {
   return response.json();
 }
 
-async function getInvoices(searchParams: DashboardPageProps['searchParams']): Promise<InvoicesResponse> {
-  const response = await fetch(`${getBackendUrl()}/invoices?${buildQueryString(searchParams)}`, {
-    cache: 'no-store',
+async function getInvoices(
+  searchParams: DashboardPageProps['searchParams'],
+  accessToken: string,
+): Promise<InvoicesResponse> {
+  const response = await fetchBackendRaw(`/invoices?${buildQueryString(searchParams)}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 
   if (!response.ok) {
@@ -128,11 +139,14 @@ async function getInvoices(searchParams: DashboardPageProps['searchParams']): Pr
 
 async function getTransactions(
   searchParams: DashboardPageProps['searchParams'],
+  accessToken: string,
 ): Promise<PaymentTransactionsResponse> {
-  const response = await fetch(
-    `${getBackendUrl()}/payments/transactions?${buildTransactionsQueryString(searchParams, 8)}`,
+  const response = await fetchBackendRaw(
+    `/payments/transactions?${buildTransactionsQueryString(searchParams, 8)}`,
     {
-      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
   );
 
@@ -144,14 +158,26 @@ async function getTransactions(
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const cookieStore = cookies();
+  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+
+  if (!accessToken) {
+    redirect('/login');
+  }
+
+  const roleCookie = cookieStore.get(USER_ROLE_COOKIE)?.value;
+  const userRole: UserRole = roleCookie === 'ADMIN' ? 'ADMIN' : 'ACCOUNTANT';
+  const userEmail = cookieStore.get(USER_EMAIL_COOKIE)?.value || '';
+  const canEdit = userRole === 'ADMIN';
+
   try {
     const [stats, invoices, transactions] = await Promise.all([
-      getStats(),
-      getInvoices(searchParams),
-      getTransactions(searchParams).catch(() => null),
+      getStats(accessToken),
+      getInvoices(searchParams, accessToken),
+      getTransactions(searchParams, accessToken).catch(() => null),
     ]);
     const currentPage = toNumber(searchParams.page, 1);
-    const accountingExportUrl = `${getBackendUrl()}/payments/transactions/export?${buildTransactionsQueryString(searchParams, 1000)}`;
+    const accountingExportUrl = `/api/payments/transactions/export?${buildTransactionsQueryString(searchParams, 1000)}`;
     const fullTraceabilityHref = `/dashboard/transactions?${buildTransactionsQueryString(searchParams, 25)}`;
 
     return (
@@ -167,14 +193,30 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <CardDescription className="max-w-3xl">
                   Emettre des factures, suivre les statuts et ouvrir la page publique de paiement.
                 </CardDescription>
+                <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Connecte en tant que {userRole === 'ADMIN' ? 'Admin' : 'Comptable'}
+                  {userEmail ? ` (${userEmail})` : ''}
+                </p>
               </div>
-              <Link href="/invoices/new">
-                <Button>Emettre une facture</Button>
-              </Link>
-              <Link href={fullTraceabilityHref}>
-                <Button variant="outline">Traçabilite paiements</Button>
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                {canEdit && (
+                  <Link href="/invoices/new">
+                    <Button>Emettre une facture</Button>
+                  </Link>
+                )}
+                <Link href={fullTraceabilityHref}>
+                  <Button variant="outline">Traçabilite paiements</Button>
+                </Link>
+                <a href="/api/auth/logout">
+                  <Button variant="ghost">Deconnexion</Button>
+                </a>
+              </div>
             </div>
+            {searchParams.forbidden === '1' && (
+              <p className="text-sm text-amber-300">
+                Le role comptable est en lecture seule: edition des factures desactivee.
+              </p>
+            )}
           </Card>
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -279,7 +321,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                       </td>
                       <td className="py-3">
                         <div className="flex flex-wrap gap-2">
-                          <Link href={`/p/${invoice.id}`}>
+                          <Link href={`/p/${encodeURIComponent(invoice.reference)}`}>
                             <Button variant="outline" className="h-9 px-3 text-xs">
                               Ouvrir paiement
                             </Button>
@@ -407,9 +449,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <CardDescription>
             Le backend est inaccessible. Verifiez PostgreSQL, Redis et les variables d environnement.
           </CardDescription>
-          <Link href="/invoices/new">
-            <Button>Creer une facture en attendant</Button>
-          </Link>
+          {canEdit ? (
+            <Link href="/invoices/new">
+              <Button>Creer une facture en attendant</Button>
+            </Link>
+          ) : (
+            <Link href="/dashboard/transactions">
+              <Button variant="outline">Ouvrir les transactions</Button>
+            </Link>
+          )}
         </Card>
       </main>
     );

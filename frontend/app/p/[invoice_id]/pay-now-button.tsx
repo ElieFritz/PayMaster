@@ -6,12 +6,19 @@ import { Button } from '@/components/ui/button';
 
 type PayNowButtonProps = {
   invoiceId: string;
+  invoiceReference: string;
   country: string;
   status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   providerReference?: string | null;
 };
 
-export function PayNowButton({ invoiceId, country, status, providerReference }: PayNowButtonProps) {
+export function PayNowButton({
+  invoiceId,
+  invoiceReference,
+  country,
+  status,
+  providerReference,
+}: PayNowButtonProps) {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +35,7 @@ export function PayNowButton({ invoiceId, country, status, providerReference }: 
       const response = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId, country }),
+        body: JSON.stringify({ invoiceId, invoiceReference, country }),
       });
 
       const payload = await response.json();
@@ -67,7 +74,7 @@ export function PayNowButton({ invoiceId, country, status, providerReference }: 
         <Button
           onClick={handlePayNow}
           disabled={disabled}
-          className="min-w-[180px] bg-[#1457d5] text-white hover:bg-[#0f49bd]"
+          className="w-full bg-[#1457d5] text-white hover:bg-[#0f49bd] sm:min-w-[180px] sm:w-auto"
         >
           {status === 'PAID' ? 'Facture deja reglee' : loading ? 'Redirection...' : 'Payer maintenant'}
         </Button>
@@ -81,7 +88,7 @@ export function PayNowButton({ invoiceId, country, status, providerReference }: 
               })
             }
             disabled={syncing || loading}
-            className="min-w-[180px] border-[#b9d3ff] text-[#124196] hover:bg-[#edf4ff]"
+            className="w-full border-[#b9d3ff] text-[#124196] hover:bg-[#edf4ff] sm:min-w-[180px] sm:w-auto"
           >
             {syncing ? 'Verification...' : 'Verifier le statut'}
           </Button>

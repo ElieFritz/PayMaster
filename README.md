@@ -49,13 +49,22 @@ Dans les variables d environnement Render (service backend):
 - `ZIKOPAY_WEBHOOK_SECRET=...`
 - `RESEND_API_KEY=...`
 - `RESEND_FROM=no-reply@boost-performers.com`
+- `AUTH_JWT_SECRET=<secret-long-et-prive>`
+- `AUTH_JWT_EXPIRES_IN=12h`
+- `AUTH_ADMIN_EMAIL=admin@boost-performers.com`
+- `AUTH_ADMIN_PASSWORD=<mot-de-passe-admin>`
+- `AUTH_ACCOUNTANT_EMAIL=comptable@boost-performers.com`
+- `AUTH_ACCOUNTANT_PASSWORD=<mot-de-passe-comptable>`
 - `FRONTEND_URL=https://<votre-frontend>.vercel.app`
+- `PUBLIC_BILLING_URL=https://www.boost-performers.com`
 - `CORS_ALLOWED_ORIGINS=https://<votre-frontend>.vercel.app,http://localhost:3000`
 
 Notes production:
 - Backend public URL actuelle: `https://paymaster-u6z2.onrender.com`
 - CORS backend: vous pouvez utiliser `FRONTEND_URL` ou `CORS_ALLOWED_ORIGINS` (supporte une liste separee par virgule et les patterns type `https://*.vercel.app`).
 - Cote frontend, utiliser `PAYMASTER_BACKEND_URL=https://paymaster-u6z2.onrender.com`.
+- Pour des liens clients credibles, definir `PAYMASTER_PUBLIC_BILLING_URL=https://www.boost-performers.com` (frontend) et `PUBLIC_BILLING_URL=https://www.boost-performers.com` (backend).
+- Optionnel frontend: `PAYMASTER_BACKEND_TIMEOUT_MS=12000` pour eviter un ecran vide si le backend est lent.
 - Render backend: `Build Command = npm ci && npm run install:browser && npm run build`, `Start Command = npm run start:prod`.
 - Verification email recu: endpoint manuel `POST /payments/invoices/:id/send-receipt` (facture `PAID` requise).
 
@@ -102,6 +111,10 @@ npm install
 npm run migration:run
 npm run start:dev
 ```
+
+Comptes de connexion dashboard:
+- Admin: peut creer des factures et envoyer manuellement les recus.
+- Comptable: acces lecture seule (dashboard + transactions, sans edition).
 
 ```bash
 cd frontend

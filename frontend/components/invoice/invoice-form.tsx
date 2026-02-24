@@ -88,9 +88,11 @@ export function InvoiceForm() {
     }
   }, [country, operatorOptions, selectedOperator, setValue]);
 
+  const publicBillingOrigin = resolvePublicBillingOrigin();
+  const publicInvoiceSlug = createdInvoiceReference || createdInvoiceId;
   const publicPaymentUrl =
-    createdInvoiceId && typeof window !== 'undefined'
-      ? `${window.location.origin}/p/${createdInvoiceId}`
+    publicInvoiceSlug && publicBillingOrigin
+      ? `${publicBillingOrigin}/p/${encodeURIComponent(publicInvoiceSlug)}`
       : null;
 
   const onSubmit = handleSubmit(async (values) => {
@@ -173,6 +175,11 @@ export function InvoiceForm() {
             La facture {createdInvoiceReference || createdInvoiceId} est prete. Partage ce lien au client
             pour qu il puisse payer.
           </CardDescription>
+        </div>
+
+        <div className="rounded-lg border border-[#1457d5]/30 bg-[#0e2f78]/20 p-3 text-xs text-[#cfe0ff]">
+          Lien officiel de paiement: <strong>{publicBillingOrigin}</strong> (HTTPS, identite Boost
+          Performers).
         </div>
 
         <div className="space-y-2 rounded-lg border border-[#8e7640]/30 bg-[#15120b]/70 p-4">
@@ -402,4 +409,22 @@ export function InvoiceForm() {
       </form>
     </Card>
   );
+}
+
+function resolvePublicBillingOrigin(): string | null {
+  const configured = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
+
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return window.location.origin;
 }

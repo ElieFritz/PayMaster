@@ -1,9 +1,12 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 import { InvoiceStatusPill } from '@/components/invoice/invoice-status-pill';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { getBackendUrl } from '@/lib/api';
+import { fetchBackendRaw } from '@/lib/api';
+import { ACCESS_TOKEN_COOKIE } from '@/lib/auth';
 import { PaymentTransactionsResponse } from '@/lib/schemas';
 
 type TransactionsPageProps = {
@@ -96,9 +99,12 @@ function providerLabel(value: string): string {
 
 async function getTransactions(
   searchParams: TransactionsPageProps['searchParams'],
+  accessToken: string,
 ): Promise<PaymentTransactionsResponse> {
-  const response = await fetch(`${getBackendUrl()}/payments/transactions?${buildQueryString(searchParams)}`, {
-    cache: 'no-store',
+  const response = await fetchBackendRaw(`/payments/transactions?${buildQueryString(searchParams)}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
 
   if (!response.ok) {
@@ -109,10 +115,17 @@ async function getTransactions(
 }
 
 export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
+  const cookieStore = cookies();
+  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value;
+
+  if (!accessToken) {
+    redirect('/login');
+  }
+
   try {
-    const transactions = await getTransactions(searchParams);
+    const transactions = await getTransactions(searchParams, accessToken);
     const currentPage = toNumber(searchParams.page, 1);
-    const exportUrl = `${getBackendUrl()}/payments/transactions/export?${buildExportQueryString(searchParams)}`;
+    const exportUrl = `/api/payments/transactions/export?${buildExportQueryString(searchParams)}`;
 
     return (
       <main className="container py-10">
@@ -121,7 +134,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.2em] text-[#d8bb70]">Audit paiements</p>
-                <CardTitle className="text-4xl">Traçabilite des transactions clients</CardTitle>
+                <CardTitle className="text-4xl">Tracabilite des transactions clients</CardTitle>
                 <CardDescription>
                   Historique complet des paiements pour audit interne, litiges et comptabilite.
                 </CardDescription>
@@ -261,7 +274,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                       </td>
                       <td className="py-3">
                         <div className="flex flex-col gap-2">
-                          <Link href={`/p/${transaction.invoiceId}`}>
+                          <Link
+                            href={`/p/${encodeURIComponent(
+                              transaction.reference || transaction.invoiceId,
+                            )}`}
+                          >
                             <Button variant="outline" className="h-9 px-3 text-xs">
                               Ouvrir facture
                             </Button>
@@ -306,7 +323,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     return (
       <main className="container py-10">
         <Card className="mx-auto max-w-3xl space-y-4">
-          <CardTitle>Traçabilite indisponible</CardTitle>
+          <CardTitle>Tracabilite indisponible</CardTitle>
           <CardDescription>
             Impossible de charger les transactions. Verifiez la connectivite backend et la base.
           </CardDescription>

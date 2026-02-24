@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { getBackendUrl } from '@/lib/api';
+import { fetchBackendRaw } from '@/lib/api';
 
 type RouteContext = {
   params: {
@@ -11,9 +11,7 @@ type RouteContext = {
 export async function GET(_request: Request, context: RouteContext) {
   const invoiceId = context.params.invoice_id;
 
-  const response = await fetch(`${getBackendUrl()}/invoices/${invoiceId}/pdf`, {
-    cache: 'no-store',
-  });
+  const response = await fetchBackendRaw(`/invoices/${invoiceId}/pdf`);
 
   if (!response.ok) {
     return NextResponse.json(
@@ -35,4 +33,3 @@ export async function GET(_request: Request, context: RouteContext) {
     },
   });
 }
-

@@ -1,6 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { UserRole } from '../common/enums/user-role.enum';
 import { InvoiceIdParamDto } from '../invoices/dto/invoice-id-param.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ListPaymentTransactionsQueryDto } from './dto/list-payment-transactions-query.dto';
@@ -22,11 +26,15 @@ export class PaymentsController {
   }
 
   @Get('transactions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ACCOUNTANT)
   listTransactions(@Query() query: ListPaymentTransactionsQueryDto) {
     return this.paymentTransactionsService.list(query);
   }
 
   @Get('transactions/export')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ACCOUNTANT)
   async exportTransactions(
     @Query() query: ListPaymentTransactionsQueryDto,
     @Res({ passthrough: true }) response: Response,
@@ -47,6 +55,8 @@ export class PaymentsController {
   }
 
   @Get('invoices/:id/transactions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.ACCOUNTANT)
   listInvoiceTransactions(@Param() params: InvoiceIdParamDto) {
     return this.paymentTransactionsService.listByInvoice(params.id);
   }
@@ -60,6 +70,8 @@ export class PaymentsController {
   }
 
   @Post('invoices/:id/send-receipt')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   sendReceipt(@Param() params: InvoiceIdParamDto) {
     return this.paymentsService.resendReceipt(params.id);
   }

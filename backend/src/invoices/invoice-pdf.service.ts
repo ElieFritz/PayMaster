@@ -56,12 +56,12 @@ export class InvoicePdfService {
           <tr>
             <td>${escapeHtml(line.category || '-')}</td>
             <td>
-              <div>${escapeHtml(line.name || '-')}</div>
-              <div class="muted">${escapeHtml(line.description || '')}</div>
+              <div class="break-anywhere">${escapeHtml(line.name || '-')}</div>
+              <div class="muted break-anywhere">${escapeHtml(line.description || '')}</div>
             </td>
-            <td>${quantity}</td>
-            <td>${formatAmount(unitPrice)} ${invoice.currency}</td>
-            <td>${formatAmount(lineTotal)} ${invoice.currency}</td>
+            <td class="text-center">${quantity}</td>
+            <td class="text-right">${formatAmount(unitPrice)} ${invoice.currency}</td>
+            <td class="text-right">${formatAmount(lineTotal)} ${invoice.currency}</td>
           </tr>
         `;
       })
@@ -73,13 +73,14 @@ export class InvoicePdfService {
         <head>
           <meta charset="UTF-8" />
           <style>
+            * { box-sizing: border-box; }
             body { font-family: Arial, sans-serif; color: #151515; }
-            .top { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+            .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
             .brand { font-size: 24px; font-weight: 800; letter-spacing: 0.03em; }
             .invoice-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
             .muted { color: #666; font-size: 12px; line-height: 1.5; }
             .panel { border: 1px solid #e3e3e3; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; table-layout: fixed; }
             th, td { border: 1px solid #e3e3e3; padding: 8px; font-size: 12px; vertical-align: top; }
             th { background: #f6f6f6; text-align: left; }
             .summary { margin-top: 18px; display: flex; justify-content: flex-end; }
@@ -87,6 +88,9 @@ export class InvoicePdfService {
             .summary-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
             .summary-total { display: flex; justify-content: space-between; margin-top: 10px; font-size: 16px; font-weight: 700; }
             .footer { margin-top: 24px; font-size: 11px; line-height: 1.6; }
+            .break-anywhere { word-break: break-word; overflow-wrap: anywhere; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
           </style>
         </head>
         <body>
@@ -98,7 +102,7 @@ export class InvoicePdfService {
             </div>
             <div>
               <div class="invoice-title">FACTURE</div>
-              <div class="muted">Reference: ${escapeHtml(invoice.reference)}</div>
+              <div class="muted break-anywhere">Reference: ${escapeHtml(invoice.reference)}</div>
               <div class="muted">Date emission: ${new Date(invoice.createdAt).toLocaleDateString('fr-FR')}</div>
               <div class="muted">Statut: ${escapeHtml(invoice.status)}</div>
             </div>
@@ -106,8 +110,8 @@ export class InvoicePdfService {
 
           <div class="panel">
             <strong>Facture a:</strong>
-            <div class="muted">${escapeHtml(invoice.customerName)}</div>
-            <div class="muted">${escapeHtml(invoice.customerEmail)}</div>
+            <div class="muted break-anywhere">${escapeHtml(invoice.customerName)}</div>
+            <div class="muted break-anywhere">${escapeHtml(invoice.customerEmail)}</div>
             <div class="muted">Pays: ${escapeHtml(invoice.country)}</div>
           </div>
 
@@ -116,9 +120,9 @@ export class InvoicePdfService {
               <tr>
                 <th>Type</th>
                 <th>Service</th>
-                <th>Qte</th>
-                <th>Prix unitaire</th>
-                <th>Total ligne</th>
+                <th class="text-center">Qte</th>
+                <th class="text-right">Prix unitaire</th>
+                <th class="text-right">Total ligne</th>
               </tr>
             </thead>
             <tbody>
@@ -144,8 +148,8 @@ export class InvoicePdfService {
           </div>
 
           <div class="footer">
-            <p><strong>Mentions legales:</strong> ${escapeHtml(LEGAL_MENTIONS)}</p>
-            <p><strong>Conditions de remboursement:</strong> ${escapeHtml(RECEIPT_TERMS)}</p>
+            <p class="break-anywhere"><strong>Mentions legales:</strong> ${escapeHtml(LEGAL_MENTIONS)}</p>
+            <p class="break-anywhere"><strong>Conditions de remboursement:</strong> ${escapeHtml(RECEIPT_TERMS)}</p>
           </div>
         </body>
       </html>

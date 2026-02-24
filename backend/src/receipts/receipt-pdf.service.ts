@@ -57,7 +57,7 @@ export class ReceiptPdfService {
               return `
                 <tr class="${rowClass}">
                   <td>${this.escapeHtml(line.category)}</td>
-                  <td>${this.escapeHtml(line.name)}</td>
+                  <td class="break-anywhere">${this.escapeHtml(line.name)}</td>
                   <td class="text-center">${line.quantity}</td>
                   <td class="text-right">${this.formatAmount(line.unitPrice)} ${invoice.currency}</td>
                   <td class="text-right strong">${this.formatAmount(line.total)} ${invoice.currency}</td>
@@ -225,12 +225,15 @@ export class ReceiptPdfService {
             table {
               width: 100%;
               border-collapse: collapse;
+              table-layout: fixed;
             }
             th, td {
               padding: 9px 10px;
               font-size: 12px;
               border-bottom: 1px solid #dce8ff;
               color: #2f4e80;
+              word-break: break-word;
+              overflow-wrap: anywhere;
             }
             th {
               background: #f4f8ff;
@@ -291,6 +294,10 @@ export class ReceiptPdfService {
             .footer p {
               margin: 0 0 5px 0;
             }
+            .break-anywhere {
+              word-break: break-word;
+              overflow-wrap: anywhere;
+            }
           </style>
         </head>
         <body>
@@ -306,7 +313,7 @@ export class ReceiptPdfService {
                 </div>
                 <div class="status-badge">PAIEMENT CONFIRME</div>
               </div>
-              <h1 class="hero-title">Facture ${this.escapeHtml(invoice.reference)}</h1>
+              <h1 class="hero-title break-anywhere">Facture ${this.escapeHtml(invoice.reference)}</h1>
               <p class="hero-meta">Emission: ${this.formatDate(invoice.createdAt)} | Confirmation: ${this.formatDate(new Date())}</p>
               <div class="identity-grid">
                 <div><strong>RCCM:</strong> CM-TPR-2026-B-00123</div>
@@ -320,13 +327,13 @@ export class ReceiptPdfService {
               <div class="cards">
                 <div class="card">
                   <p class="card-label">Facture a</p>
-                  <p class="card-main">${this.escapeHtml(invoice.customerName)}</p>
-                  <p class="card-sub">${this.escapeHtml(invoice.customerEmail)}<br/>Pays: ${this.escapeHtml(invoice.country)}</p>
+                  <p class="card-main break-anywhere">${this.escapeHtml(invoice.customerName)}</p>
+                  <p class="card-sub break-anywhere">${this.escapeHtml(invoice.customerEmail)}<br/>Pays: ${this.escapeHtml(invoice.country)}</p>
                 </div>
                 <div class="card">
                   <p class="card-label">Projet</p>
-                  <p class="card-main">${this.escapeHtml(projectName || 'Prestation digitale')}</p>
-                  <p class="card-sub">Reference paiement: ${this.escapeHtml(providerReference)}</p>
+                  <p class="card-main break-anywhere">${this.escapeHtml(projectName || 'Prestation digitale')}</p>
+                  <p class="card-sub break-anywhere">Reference paiement: ${this.escapeHtml(providerReference)}</p>
                 </div>
                 <div class="card">
                   <p class="card-label">Montant recu</p>
