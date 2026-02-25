@@ -58,6 +58,7 @@ Dans les variables d environnement Render (service backend):
 - `FRONTEND_URL=https://<votre-frontend>.vercel.app`
 - `PUBLIC_BILLING_URL=https://www.boost-performers.com`
 - `CORS_ALLOWED_ORIGINS=https://<votre-frontend>.vercel.app,http://localhost:3000`
+- `PUPPETEER_CACHE_DIR=/opt/render/project/src/.cache/puppeteer`
 
 Notes production:
 - Backend public URL actuelle: `https://paymaster-u6z2.onrender.com`
@@ -66,7 +67,8 @@ Notes production:
 - Pour des liens clients credibles, definir `PAYMASTER_PUBLIC_BILLING_URL=https://www.boost-performers.com` (frontend) et `PUBLIC_BILLING_URL=https://www.boost-performers.com` (backend).
 - Optionnel frontend: `PAYMASTER_BACKEND_TIMEOUT_MS=12000` pour eviter un ecran vide si le backend est lent.
 - Render backend: `Build Command = npm ci && npm run install:browser && npm run build`, `Start Command = npm run start:prod`.
-- Si le telechargement PDF retourne `500` en prod, verifier que `npm run install:browser` est bien execute au build. En fallback, definir `PUPPETEER_EXECUTABLE_PATH` vers le binaire Chrome installe.
+- Si le telechargement PDF retourne `500/503` en prod, verifier que `npm run install:browser` est bien execute au build et que `PUPPETEER_CACHE_DIR` pointe vers un dossier persistant du projet (ex: `/opt/render/project/src/.cache/puppeteer`).
+- En fallback, definir `PUPPETEER_EXECUTABLE_PATH` vers le binaire Chrome installe.
 - Verification email recu: endpoint manuel `POST /payments/invoices/:id/send-receipt` (facture `PAID` requise).
 
 ### 3. Lancer la migration en production

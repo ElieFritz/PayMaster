@@ -24,7 +24,12 @@ function resolveConfiguredExecutablePath(): string | null {
 function resolveBundledExecutablePath(): string | null {
   try {
     const executablePath = puppeteer.executablePath();
-    return executablePath ? executablePath.trim() : null;
+    const normalizedPath = executablePath ? executablePath.trim() : '';
+    if (!normalizedPath) {
+      return null;
+    }
+
+    return isFile(normalizedPath) ? normalizedPath : null;
   } catch {
     return null;
   }
@@ -36,6 +41,8 @@ type LaunchAttempt = {
 };
 
 function buildLaunchAttempts(): LaunchAttempt[] {
+  ensurePuppeteerCacheDir();
+
   const baseOptions: LaunchOptions = {
     headless: true,
     args: PDF_BROWSER_ARGS,
@@ -158,8 +165,11 @@ function resolveBrowserCacheDirectories(): string[] {
   const candidates = [
     process.env.PUPPETEER_CACHE_DIR,
     path.join(process.cwd(), '.cache', 'puppeteer'),
+    path.resolve(__dirname, '../../../.cache/puppeteer'),
     path.join(os.homedir(), '.cache', 'puppeteer'),
     '/opt/render/.cache/puppeteer',
+    '/opt/render/project/src/.cache/puppeteer',
+    '/opt/render/project/src/backend/.cache/puppeteer',
     '/opt/render/project/.cache/puppeteer',
   ];
 
@@ -171,7 +181,7 @@ function resolveBrowserCacheDirectories(): string[] {
       continue;
     }
 
-    const normalized = candidate.trim();
+    const normalized = normalizeCacheDirectory(candidate);
     if (!normalized || unique.has(normalized)) {
       continue;
     }
@@ -181,6 +191,24 @@ function resolveBrowserCacheDirectories(): string[] {
   }
 
   return directories;
+}
+
+function ensurePuppeteerCacheDir(): void {
+  const existing = process.env.PUPPETEER_CACHE_DIR;
+  if (existing && existing.trim().length > 0) {
+    return;
+  }
+
+  process.env.PUPPETEER_CACHE_DIR = path.join(process.cwd(), '.cache', 'puppeteer');
+}
+
+function normalizeCacheDirectory(candidate: string): string | null {
+  const trimmed = candidate.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return path.isAbsolute(trimmed) ? trimmed : path.resolve(process.cwd(), trimmed);
 }
 
 function resolveCandidateRelativeExecutablePaths(browserFamily: string): string[][] {
