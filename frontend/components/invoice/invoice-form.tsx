@@ -15,6 +15,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { COUNTRIES, resolveCurrency } from '@/lib/countries';
 import { getDefaultOperator, getOperatorsByCountry } from '@/lib/mobile-money-operators';
+import { resolvePublicOrigin } from '@/lib/public-origin';
 import { invoiceFormSchema, InvoiceFormValues } from '@/lib/schemas';
 
 const DEFAULT_LINE = {
@@ -412,19 +413,9 @@ export function InvoiceForm() {
 }
 
 function resolvePublicBillingOrigin(): string | null {
-  const configured = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
-
-  if (configured) {
-    try {
-      return new URL(configured).origin;
-    } catch {
-      return null;
-    }
-  }
-
   if (typeof window === 'undefined') {
-    return null;
+    return resolvePublicOrigin([process.env.NEXT_PUBLIC_APP_URL]);
   }
 
-  return window.location.origin;
+  return resolvePublicOrigin([process.env.NEXT_PUBLIC_APP_URL, window.location.origin]);
 }

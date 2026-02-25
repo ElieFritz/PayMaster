@@ -96,24 +96,68 @@ export class ReceiptMailerService {
   }
 
   private resolveFrontendBaseUrl(): string | null {
-    const raw = this.configService.get<string>(
-      'PUBLIC_BILLING_URL',
+    const origins = this.collectOriginCandidates([
+      this.configService.get<string>('PUBLIC_BILLING_URL', ''),
       this.configService.get<string>('FRONTEND_URL', ''),
-    );
-    const firstOrigin = raw
-      .split(',')
-      .map((item) => item.trim())
-      .find((item) => item.length > 0);
+    ]);
 
-    if (!firstOrigin) {
+    if (origins.length === 0) {
       return null;
     }
 
-    try {
-      const parsed = new URL(firstOrigin);
-      return parsed.origin.replace(/\/+$/, '');
-    } catch {
+    const firstNonLocal = origins.find((origin) => !this.isLocalOrigin(origin));
+    if (firstNonLocal) {
+      return firstNonLocal;
+    }
+
+    const isProduction = this.configService.get<string>('NODE_ENV', 'development') === 'production';
+    if (isProduction) {
       return null;
+    }
+
+    return origins[0];
+  }
+
+  private collectOriginCandidates(values: string[]): string[] {
+    const uniqueOrigins = new Set<string>();
+    const origins: string[] = [];
+
+    for (const value of values) {
+      for (const candidate of value.split(',')) {
+        const trimmed = candidate.trim();
+        if (!trimmed) {
+          continue;
+        }
+
+        try {
+          const normalized = new URL(trimmed).origin.replace(/\/+$/, '');
+          if (!uniqueOrigins.has(normalized)) {
+            uniqueOrigins.add(normalized);
+            origins.push(normalized);
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    return origins;
+  }
+
+  private isLocalOrigin(origin: string): boolean {
+    try {
+      const hostname = new URL(origin).hostname.toLowerCase();
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+        return true;
+      }
+
+      if (hostname === '0.0.0.0') {
+        return true;
+      }
+
+      return hostname.startsWith('127.');
+    } catch {
+      return true;
     }
   }
 

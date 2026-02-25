@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { fetchBackend } from '@/lib/api';
+import { resolvePublicOrigin } from '@/lib/public-origin';
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
+    const origin = resolvePublicOrigin([
+      process.env.PAYMASTER_PUBLIC_BILLING_URL,
+      process.env.NEXT_PUBLIC_APP_URL,
+      resolveForwardedOrigin(request),
+      request.nextUrl.origin,
+    ]);
+    if (!origin) {
+      return NextResponse.json({ message: 'Unable to resolve billing origin.' }, { status: 500 });
+    }
 
-    const rawAppUrl = (
-      process.env.PAYMASTER_PUBLIC_BILLING_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      request.nextUrl.origin ||
-      ''
-    ).trim();
-    const origin = resolveOrigin(rawAppUrl, request.nextUrl.origin);
     const publicInvoiceSlug = resolvePublicInvoiceSlug(payload);
     if (!publicInvoiceSlug) {
       return NextResponse.json({ message: 'invoiceId is required.' }, { status: 400 });
@@ -49,10 +52,32 @@ function resolvePublicInvoiceSlug(payload: unknown): string {
   return reference || invoiceId;
 }
 
-function resolveOrigin(primary: string, fallback: string): string {
-  try {
-    return new URL(primary).origin;
-  } catch {
-    return new URL(fallback).origin;
+function resolveForwardedOrigin(request: NextRequest): string | null {
+  const forwardedOrigin = firstHeaderValue(request.headers.get('x-forwarded-origin'));
+  if (forwardedOrigin) {
+    return forwardedOrigin;
   }
+
+  const forwardedProto = firstHeaderValue(request.headers.get('x-forwarded-proto'));
+  const forwardedHost = firstHeaderValue(request.headers.get('x-forwarded-host'));
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  const host = firstHeaderValue(request.headers.get('host'));
+  if (!host) {
+    return null;
+  }
+
+  const protocol = request.nextUrl.protocol.replace(/:$/, '') || 'https';
+  return `${protocol}://${host}`;
+}
+
+function firstHeaderValue(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const first = value.split(',')[0]?.trim();
+  return first || null;
 }
