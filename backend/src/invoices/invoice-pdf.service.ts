@@ -17,10 +17,32 @@ export class InvoicePdfService {
   private readonly logger = new Logger(InvoicePdfService.name);
 
   async generateInvoicePdf(invoice: Invoice): Promise<Buffer> {
-    let browser: Awaited<ReturnType<typeof launchPdfBrowser>> | null = null;
+    const maxAttempts = 2;
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.generateWithFreshBrowser(invoice);
+      } catch (error) {
+        lastError = error;
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Failed to generate invoice PDF for ${invoice.reference} (attempt ${attempt}/${maxAttempts}): ${message}`,
+        );
+
+        if (attempt < maxAttempts) {
+          await delay(300);
+        }
+      }
+    }
+
+    throw new ServiceUnavailableException(resolvePdfUnavailableMessage(lastError));
+  }
+
+  private async generateWithFreshBrowser(invoice: Invoice): Promise<Buffer> {
+    const browser = await launchPdfBrowser();
 
     try {
-      browser = await launchPdfBrowser();
       const page = await browser.newPage();
       await page.setContent(this.renderHtml(invoice), { waitUntil: 'networkidle0' });
 
@@ -36,16 +58,8 @@ export class InvoicePdfService {
       });
 
       return Buffer.isBuffer(pdfBytes) ? pdfBytes : Buffer.from(pdfBytes);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to generate invoice PDF for ${invoice.reference}: ${message}`);
-      throw new ServiceUnavailableException(
-        'Invoice PDF generation is temporarily unavailable. Please try again shortly.',
-      );
     } finally {
-      if (browser) {
-        await browser.close();
-      }
+      await browser.close();
     }
   }
 
@@ -179,4 +193,27 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function resolvePdfUnavailableMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes('unable to launch chrome') ||
+    normalized.includes('could not find chrome') ||
+    normalized.includes('browser was not found') ||
+    normalized.includes('executable')
+  ) {
+    return (
+      'Invoice PDF generation is temporarily unavailable because the browser runtime is missing on the server. ' +
+      'Please contact support to verify Puppeteer Chrome installation.'
+    );
+  }
+
+  return 'Invoice PDF generation is temporarily unavailable. Please try again shortly.';
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
