@@ -6,6 +6,8 @@ import { resolvePublicOrigin } from '@/lib/public-origin';
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
+    const invoiceId = resolveInvoiceId(payload);
+    const country = resolveCountry(payload);
     const origin = resolvePublicOrigin([
       process.env.PAYMASTER_PUBLIC_BILLING_URL,
       process.env.NEXT_PUBLIC_APP_URL,
@@ -16,17 +18,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Unable to resolve billing origin.' }, { status: 500 });
     }
 
-    const publicInvoiceSlug = resolvePublicInvoiceSlug(payload);
-    if (!publicInvoiceSlug) {
+    if (!invoiceId) {
       return NextResponse.json({ message: 'invoiceId is required.' }, { status: 400 });
     }
+    const publicInvoiceSlug = resolvePublicInvoiceSlug(payload, invoiceId);
     const successUrl = new URL(`/p/${encodeURIComponent(publicInvoiceSlug)}?status=success`, origin).toString();
     const cancelUrl = new URL(`/p/${encodeURIComponent(publicInvoiceSlug)}?status=cancelled`, origin).toString();
 
     const response = await fetchBackend('/payments/initiate', {
       method: 'POST',
       body: JSON.stringify({
-        ...payload,
+        invoiceId,
+        ...(country ? { country } : {}),
         successUrl,
         cancelUrl,
       }),
@@ -40,16 +43,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function resolvePublicInvoiceSlug(payload: unknown): string {
+function resolvePublicInvoiceSlug(payload: unknown, invoiceId: string): string {
+  if (!payload || typeof payload !== 'object') {
+    return invoiceId;
+  }
+
+  const source = payload as Record<string, unknown>;
+  const reference = typeof source.invoiceReference === 'string' ? source.invoiceReference.trim() : '';
+
+  return reference || invoiceId;
+}
+
+function resolveInvoiceId(payload: unknown): string {
   if (!payload || typeof payload !== 'object') {
     return '';
   }
 
   const source = payload as Record<string, unknown>;
-  const reference = typeof source.invoiceReference === 'string' ? source.invoiceReference.trim() : '';
-  const invoiceId = typeof source.invoiceId === 'string' ? source.invoiceId.trim() : '';
+  return typeof source.invoiceId === 'string' ? source.invoiceId.trim() : '';
+}
 
-  return reference || invoiceId;
+function resolveCountry(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const source = payload as Record<string, unknown>;
+  const value = typeof source.country === 'string' ? source.country.trim().toUpperCase() : '';
+  if (value.length !== 2) {
+    return null;
+  }
+
+  return value;
 }
 
 function resolveForwardedOrigin(request: NextRequest): string | null {

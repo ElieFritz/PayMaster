@@ -256,7 +256,6 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                   <PayNowButton
                     invoiceId={invoice.id}
-                    invoiceReference={invoice.reference}
                     country={invoice.country}
                     status={invoice.status}
                     providerReference={providerReference}

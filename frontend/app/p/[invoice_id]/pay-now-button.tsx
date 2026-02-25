@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 
 type PayNowButtonProps = {
   invoiceId: string;
-  invoiceReference: string;
   country: string;
   status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   providerReference?: string | null;
@@ -14,7 +13,6 @@ type PayNowButtonProps = {
 
 export function PayNowButton({
   invoiceId,
-  invoiceReference,
   country,
   status,
   providerReference,
@@ -35,7 +33,7 @@ export function PayNowButton({
       const response = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId, invoiceReference, country }),
+        body: JSON.stringify({ invoiceId, country }),
       });
 
       const payload = await response.json();

@@ -1,14 +1,20 @@
+import * as childProcess from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { Browser, LaunchOptions } from 'puppeteer';
-import puppeteer from 'puppeteer';
+import type { Browser, LaunchOptions } from 'puppeteer';
 
 const PDF_BROWSER_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
 ];
+const DEFAULT_PUPPETEER_CACHE_DIR = path.join(process.cwd(), '.cache', 'puppeteer');
+const RUNTIME_INSTALL_COMMAND = 'npx puppeteer browsers install chrome';
+
+ensurePuppeteerCacheDir();
+const puppeteer: typeof import('puppeteer') = require('puppeteer');
+let runtimeInstallPromise: Promise<RuntimeInstallResult> | null = null;
 
 function resolveConfiguredExecutablePath(): string | null {
   const value = process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -40,9 +46,17 @@ type LaunchAttempt = {
   options: LaunchOptions;
 };
 
-function buildLaunchAttempts(): LaunchAttempt[] {
-  ensurePuppeteerCacheDir();
+type LaunchResult = {
+  browser: Browser | null;
+  errors: string[];
+};
 
+type RuntimeInstallResult = {
+  ok: boolean;
+  detail: string;
+};
+
+function buildLaunchAttempts(): LaunchAttempt[] {
   const baseOptions: LaunchOptions = {
     headless: true,
     args: PDF_BROWSER_ARGS,
@@ -99,15 +113,23 @@ function buildLaunchAttempts(): LaunchAttempt[] {
 }
 
 export async function launchPdfBrowser(): Promise<Browser> {
-  const attempts = buildLaunchAttempts();
-  const errors: string[] = [];
+  const initialResult = await attemptBrowserLaunches(buildLaunchAttempts());
+  if (initialResult.browser) {
+    return initialResult.browser;
+  }
 
-  for (const attempt of attempts) {
-    try {
-      return await puppeteer.launch(attempt.options);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      errors.push(`${attempt.label}: ${message}`);
+  const errors = [...initialResult.errors];
+
+  if (shouldInstallChromeAtRuntime(errors)) {
+    const installResult = await ensureChromeInstalledAtRuntime();
+    errors.push(`runtime install: ${installResult.detail}`);
+
+    if (installResult.ok) {
+      const retryResult = await attemptBrowserLaunches(buildLaunchAttempts());
+      if (retryResult.browser) {
+        return retryResult.browser;
+      }
+      errors.push(...retryResult.errors);
     }
   }
 
@@ -120,6 +142,82 @@ export async function launchPdfBrowser(): Promise<Browser> {
       `Attempts: ${errors.join(' | ')}`,
     ].join(' '),
   );
+}
+
+async function attemptBrowserLaunches(attempts: LaunchAttempt[]): Promise<LaunchResult> {
+  const errors: string[] = [];
+
+  for (const attempt of attempts) {
+    try {
+      const browser = await puppeteer.launch(attempt.options);
+      return { browser, errors };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(`${attempt.label}: ${message}`);
+    }
+  }
+
+  return { browser: null, errors };
+}
+
+function shouldInstallChromeAtRuntime(errors: string[]): boolean {
+  const joined = errors.join(' ').toLowerCase();
+  return (
+    joined.includes('could not find chrome') ||
+    joined.includes('browser was not found') ||
+    joined.includes('unable to find browser')
+  );
+}
+
+async function ensureChromeInstalledAtRuntime(): Promise<RuntimeInstallResult> {
+  if (!runtimeInstallPromise) {
+    runtimeInstallPromise = Promise.resolve().then(() => installChromeAtRuntime());
+  }
+
+  const result = await runtimeInstallPromise;
+  if (!result.ok) {
+    runtimeInstallPromise = null;
+  }
+
+  return result;
+}
+
+function installChromeAtRuntime(): RuntimeInstallResult {
+  const cacheDir = process.env.PUPPETEER_CACHE_DIR || DEFAULT_PUPPETEER_CACHE_DIR;
+
+  try {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, detail: `failed to create cache dir (${cacheDir}): ${message}` };
+  }
+
+  const result = childProcess.spawnSync(RUNTIME_INSTALL_COMMAND, {
+    shell: true,
+    env: {
+      ...process.env,
+      PUPPETEER_CACHE_DIR: cacheDir,
+    },
+    encoding: 'utf8',
+  });
+
+  if (result.error) {
+    const message = result.error instanceof Error ? result.error.message : String(result.error);
+    return { ok: false, detail: `install command error: ${message}` };
+  }
+
+  if (result.status === 0) {
+    return { ok: true, detail: `chrome installed in ${cacheDir}` };
+  }
+
+  const output = truncateText(
+    [result.stderr, result.stdout]
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .find((value) => value.length > 0) || `exit code ${String(result.status)}`,
+    360,
+  );
+
+  return { ok: false, detail: output };
 }
 
 function discoverExecutablePaths(): string[] {
@@ -195,11 +293,21 @@ function resolveBrowserCacheDirectories(): string[] {
 
 function ensurePuppeteerCacheDir(): void {
   const existing = process.env.PUPPETEER_CACHE_DIR;
-  if (existing && existing.trim().length > 0) {
+  const normalized =
+    existing && existing.trim().length > 0
+      ? normalizeCacheDirectory(existing)
+      : DEFAULT_PUPPETEER_CACHE_DIR;
+
+  if (!normalized) {
     return;
   }
 
-  process.env.PUPPETEER_CACHE_DIR = path.join(process.cwd(), '.cache', 'puppeteer');
+  process.env.PUPPETEER_CACHE_DIR = normalized;
+  try {
+    fs.mkdirSync(normalized, { recursive: true });
+  } catch {
+    // Ignore filesystem failures here; launch attempts will provide actionable errors.
+  }
 }
 
 function normalizeCacheDirectory(candidate: string): string | null {
@@ -273,4 +381,12 @@ function isFile(targetPath: string): boolean {
   } catch {
     return false;
   }
+}
+
+function truncateText(value: string, limit: number): string {
+  if (value.length <= limit) {
+    return value;
+  }
+
+  return `${value.slice(0, limit - 3)}...`;
 }
