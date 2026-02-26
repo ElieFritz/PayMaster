@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, InternalServerErrorException, Logger }
 import { Currency } from '../common/enums/currency.enum';
 import { InvoiceStatus } from '../common/enums/invoice-status.enum';
 import { InvoicesService } from '../invoices/invoices.service';
+import { ReceiptPdfService } from '../receipts/receipt-pdf.service';
 import { ReceiptService } from '../receipts/receipt.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import {
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly invoicesService: InvoicesService,
     private readonly paymentStrategyFactory: PaymentStrategyFactory,
     private readonly paymentTransactionsService: PaymentTransactionsService,
+    private readonly receiptPdfService: ReceiptPdfService,
     private readonly receiptService: ReceiptService,
   ) {}
 
@@ -202,6 +204,27 @@ export class PaymentsService {
       recipient: invoice.customerEmail,
       sentAt: new Date().toISOString(),
     };
+  }
+
+  async downloadReceiptPdf(invoiceId: string): Promise<{ pdfBuffer: Buffer; reference: string }> {
+    const invoice = await this.invoicesService.findOneById(invoiceId);
+
+    if (invoice.status !== InvoiceStatus.PAID) {
+      throw new BadRequestException('Receipt PDF is available only for paid invoices.');
+    }
+
+    try {
+      const pdfBuffer = await this.receiptPdfService.generatePdf(invoice);
+      return { pdfBuffer, reference: invoice.reference };
+    } catch (error) {
+      this.logger.error(
+        `Failed to generate receipt PDF for ${invoice.reference}. Falling back to invoice PDF.`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+
+    const pdfBuffer = await this.invoicesService.generatePdf(invoice.id);
+    return { pdfBuffer, reference: invoice.reference };
   }
 
   async manualUpdateInvoiceStatus(

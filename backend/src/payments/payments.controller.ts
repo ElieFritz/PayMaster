@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -80,6 +80,24 @@ export class PaymentsController {
     return this.paymentsService.resendReceipt(params.id);
   }
 
+  @Get('invoices/:id/receipt-pdf')
+  async downloadReceiptPdf(
+    @Param() params: InvoiceIdParamDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const { pdfBuffer, reference } = await this.paymentsService.downloadReceiptPdf(params.id);
+    const filename = `receipt-${reference}.pdf`;
+
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': this.buildAttachmentContentDisposition(filename),
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    return new StreamableFile(pdfBuffer);
+  }
+
   @Post('invoices/:id/manual-status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -144,5 +162,11 @@ export class PaymentsController {
 
     const normalized = String(value).replace(/"/g, '""');
     return `"${normalized}"`;
+  }
+
+  private buildAttachmentContentDisposition(filename: string): string {
+    const sanitized = filename.replace(/[^A-Za-z0-9._-]/g, '_');
+    const encoded = encodeURIComponent(sanitized);
+    return `attachment; filename="${sanitized}"; filename*=UTF-8''${encoded}`;
   }
 }

@@ -288,6 +288,13 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                               PDF
                             </Button>
                           </a>
+                          {transaction.status === 'PAID' && (
+                            <a href={`/api/invoices/${transaction.invoiceId}/receipt-pdf`}>
+                              <Button variant="outline" className="h-9 px-3 text-xs">
+                                Recu PDF
+                              </Button>
+                            </a>
+                          )}
                         </div>
                       </td>
                     </tr>

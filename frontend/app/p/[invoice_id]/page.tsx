@@ -165,6 +165,7 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
   const providerReference =
     invoice.metadata?.payment?.providerReference || invoice.transactionId || invoice.reference;
   const pdfDownloadUrl = `/api/invoices/${invoice.id}/pdf`;
+  const receiptDownloadUrl = `/api/invoices/${invoice.id}/receipt-pdf`;
   const status = STATUS_STYLE[invoice.status];
   const servicesSubtotal = services.reduce(
     (sum, line) => sum + Number(line.quantity) * Number(line.unitPrice),
@@ -308,8 +309,19 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
                     rel="noopener noreferrer"
                     className="inline-flex h-11 items-center justify-center rounded-md border border-[#bdd4fb] bg-white px-5 text-sm font-semibold text-[#134094] transition-colors hover:bg-[#edf4ff]"
                   >
-                    Telecharger en PDF
+                    Telecharger facture PDF
                   </a>
+                  {invoice.status === 'PAID' && (
+                    <a
+                      href={receiptDownloadUrl}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-11 items-center justify-center rounded-md border border-[#b8e5cb] bg-[#e7f8ee] px-5 text-sm font-semibold text-[#14603a] transition-colors hover:bg-[#daf2e4]"
+                    >
+                      Telecharger recu PDF
+                    </a>
+                  )}
                 </div>
               </div>
             </div>

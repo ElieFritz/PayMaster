@@ -332,6 +332,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                               Audit
                             </Button>
                           </Link>
+                          {invoice.status === 'PAID' && (
+                            <a href={`/api/invoices/${invoice.id}/receipt-pdf`}>
+                              <Button variant="outline" className="h-9 px-3 text-xs">
+                                Recu PDF
+                              </Button>
+                            </a>
+                          )}
                           {canEdit && (
                             <ManualStatusAction
                               invoiceId={invoice.id}
