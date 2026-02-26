@@ -54,28 +54,69 @@ const COMPANY_LEGAL_IDENTIFIERS = [
   { label: 'Siege', value: 'Douala, Cameroun' },
   { label: 'Contact', value: 'billing@boost-performers.com' },
 ];
+const INVOICE_FETCH_MAX_ATTEMPTS = 3;
+const RETRYABLE_INVOICE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 async function getInvoice(invoiceId: string): Promise<Invoice | null> {
   const encoded = encodeURIComponent(invoiceId);
   const candidates = looksLikeUuid(invoiceId)
     ? [`/invoices/${encoded}`, `/invoices/public/reference/${encoded}`]
     : [`/invoices/public/reference/${encoded}`, `/invoices/${encoded}`];
+  let loadError: Error | null = null;
 
   for (const path of candidates) {
-    const response = await fetchBackendRaw(path);
+    const response = await fetchInvoiceWithRetry(path);
 
     if (response.status === 404 || response.status === 400) {
       continue;
     }
 
     if (!response.ok) {
-      throw new Error('Unable to load invoice.');
+      loadError = new Error(`Unable to load invoice (status ${response.status}).`);
+      continue;
     }
 
     return response.json();
   }
 
+  if (loadError) {
+    throw loadError;
+  }
+
   return null;
+}
+
+async function fetchInvoiceWithRetry(path: string): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= INVOICE_FETCH_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetchBackendRaw(path);
+      if (!shouldRetryInvoiceStatus(response.status) || attempt === INVOICE_FETCH_MAX_ATTEMPTS) {
+        return response;
+      }
+    } catch (error) {
+      const normalizedError =
+        error instanceof Error ? error : new Error('Unknown error while loading invoice.');
+      lastError = normalizedError;
+
+      if (attempt === INVOICE_FETCH_MAX_ATTEMPTS) {
+        throw normalizedError;
+      }
+    }
+
+    await delay(attempt * 400);
+  }
+
+  throw lastError || new Error('Unable to load invoice.');
+}
+
+function shouldRetryInvoiceStatus(status: number): boolean {
+  return RETRYABLE_INVOICE_STATUS.has(status);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function formatDate(value: string) {

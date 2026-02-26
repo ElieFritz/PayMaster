@@ -2,7 +2,7 @@ const FALLBACK_BACKEND_URL =
   process.env.NODE_ENV === 'production'
     ? 'https://paymaster-u6z2.onrender.com'
     : 'http://localhost:4000';
-const DEFAULT_BACKEND_TIMEOUT_MS = Number(process.env.PAYMASTER_BACKEND_TIMEOUT_MS || 12000);
+const DEFAULT_BACKEND_TIMEOUT_MS = resolveBackendTimeoutMs();
 
 export function getBackendUrl(): string {
   return process.env.PAYMASTER_BACKEND_URL || FALLBACK_BACKEND_URL;
@@ -32,4 +32,15 @@ export async function fetchBackendRaw(path: string, init?: RequestInit): Promise
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function resolveBackendTimeoutMs(): number {
+  const fallback = 20000;
+  const configuredValue = Number(process.env.PAYMASTER_BACKEND_TIMEOUT_MS || fallback);
+
+  if (!Number.isFinite(configuredValue) || configuredValue < 1000) {
+    return fallback;
+  }
+
+  return Math.round(configuredValue);
 }
