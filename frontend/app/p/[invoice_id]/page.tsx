@@ -303,6 +303,9 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
                   />
                   <a
                     href={pdfDownloadUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex h-11 items-center justify-center rounded-md border border-[#bdd4fb] bg-white px-5 text-sm font-semibold text-[#134094] transition-colors hover:bg-[#edf4ff]"
                   >
                     Telecharger en PDF

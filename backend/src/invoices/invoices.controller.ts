@@ -66,11 +66,13 @@ export class InvoicesController {
   ): Promise<StreamableFile> {
     const invoice = await this.invoicesService.findOneById(params.id);
     const pdfBuffer = await this.invoicesService.generatePdf(params.id);
+    const filename = `invoice-${invoice.reference}.pdf`;
 
     response.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename=\"invoice-${invoice.reference}.pdf\"`,
+      'Content-Disposition': buildAttachmentContentDisposition(filename),
       'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
     });
 
     return new StreamableFile(pdfBuffer);
@@ -80,4 +82,10 @@ export class InvoicesController {
   findOne(@Param() params: InvoiceIdParamDto): Promise<Invoice> {
     return this.invoicesService.findOneById(params.id);
   }
+}
+
+function buildAttachmentContentDisposition(filename: string): string {
+  const sanitized = filename.replace(/[^A-Za-z0-9._-]/g, '_');
+  const encoded = encodeURIComponent(sanitized);
+  return `attachment; filename="${sanitized}"; filename*=UTF-8''${encoded}`;
 }
