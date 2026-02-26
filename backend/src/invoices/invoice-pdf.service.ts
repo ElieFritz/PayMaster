@@ -1,8 +1,9 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import PDFDocument = require('pdfkit');
 
 import { LEGAL_MENTIONS, RECEIPT_TERMS } from '../common/constants/legal';
 import { Invoice } from './invoice.entity';
+
+const PDFDocument = require('pdfkit');
 
 type InvoiceLine = {
   category?: string;
@@ -63,7 +64,7 @@ export class InvoicePdfService {
     });
   }
 
-  private renderDocument(doc: PDFKit.PDFDocument, invoice: Invoice): void {
+  private renderDocument(doc: any, invoice: Invoice): void {
     const lines = this.resolveInvoiceLines(invoice);
     const projectName = this.resolveOptionalString((invoice.metadata || {}).projectName) || 'Digital services';
     const notes = this.resolveOptionalString((invoice.metadata || {}).notes);
@@ -209,7 +210,7 @@ export class InvoicePdfService {
   }
 
   private computeLineBlockHeight(
-    doc: PDFKit.PDFDocument,
+    doc: any,
     line: NormalizedInvoiceLine,
     width: number,
   ): number {
@@ -228,7 +229,7 @@ export class InvoicePdfService {
     return Math.max(64, Math.ceil(18 + titleHeight + 4 + descriptionHeight + 4 + detailsHeight + 10));
   }
 
-  private ensureSpace(doc: PDFKit.PDFDocument, neededHeight: number): void {
+  private ensureSpace(doc: any, neededHeight: number): void {
     const usableBottom = doc.page.height - doc.page.margins.bottom;
     if (doc.y + neededHeight <= usableBottom) {
       return;
