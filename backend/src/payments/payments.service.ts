@@ -236,6 +236,7 @@ export class PaymentsService {
     });
 
     let receiptSent = false;
+    let receiptQueued = false;
     const shouldSendReceipt = input.sendReceipt !== false;
 
     if (
@@ -243,15 +244,20 @@ export class PaymentsService {
       previousStatus !== InvoiceStatus.PAID &&
       updatedInvoice.status === InvoiceStatus.PAID
     ) {
-      try {
-        await this.receiptService.sendPaidInvoiceReceipt(updatedInvoice.id);
-        receiptSent = true;
-      } catch (error) {
-        this.logger.error(
-          `Failed to send receipt after manual status update for invoice ${updatedInvoice.reference}`,
-          error instanceof Error ? error.stack : String(error),
-        );
-      }
+      receiptQueued = true;
+      void this.receiptService
+        .sendPaidInvoiceReceipt(updatedInvoice.id)
+        .then(() => {
+          this.logger.log(
+            `Receipt sent after manual status update for invoice ${updatedInvoice.reference}`,
+          );
+        })
+        .catch((error) => {
+          this.logger.error(
+            `Failed to send receipt after manual status update for invoice ${updatedInvoice.reference}`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        });
     }
 
     return {
@@ -265,6 +271,7 @@ export class PaymentsService {
       updatedAt,
       manual: true,
       receiptSent,
+      receiptQueued,
     };
   }
 

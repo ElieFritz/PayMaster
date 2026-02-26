@@ -46,11 +46,25 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const data = await response.json();
+    const rawBody = await response.text();
+    const parsedBody = parseJsonSafely(rawBody);
 
-    return NextResponse.json(data, { status: response.status });
-  } catch {
-    return NextResponse.json({ message: 'Unable to update invoice status manually.' }, { status: 502 });
+    if (parsedBody !== null) {
+      return NextResponse.json(parsedBody, { status: response.status });
+    }
+
+    return new NextResponse(rawBody, {
+      status: response.status,
+      headers: {
+        'Content-Type': response.headers.get('content-type') || 'text/plain; charset=utf-8',
+      },
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Unexpected proxy error.';
+    return NextResponse.json(
+      { message: 'Unable to update invoice status manually.', detail },
+      { status: 502 },
+    );
   }
 }
 
@@ -69,4 +83,16 @@ function resolveBoolean(value: unknown): boolean | null {
   }
 
   return value;
+}
+
+function parseJsonSafely(value: string): unknown | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
