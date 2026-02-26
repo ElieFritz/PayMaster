@@ -5,6 +5,11 @@ import { InvoiceStatus } from '../common/enums/invoice-status.enum';
 import { InvoicesService } from '../invoices/invoices.service';
 import { ReceiptService } from '../receipts/receipt.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
+import {
+  MANUAL_PAYMENT_METHODS,
+  ManualPaymentMethod,
+  ManualUpdateInvoiceStatusDto,
+} from './dto/manual-update-invoice-status.dto';
 import { SyncPaymentStatusDto } from './dto/sync-payment-status.dto';
 import { PaymentStrategyFactory } from './payment-strategy.factory';
 import { PaymentTransactionsService } from './payment-transactions.service';
@@ -199,6 +204,70 @@ export class PaymentsService {
     };
   }
 
+  async manualUpdateInvoiceStatus(
+    invoiceId: string,
+    input: ManualUpdateInvoiceStatusDto,
+    updatedByEmail?: string | null,
+  ) {
+    const invoice = await this.invoicesService.findOneById(invoiceId);
+    const previousStatus = invoice.status;
+    const updatedAt = new Date().toISOString();
+    const note = normalizeOptionalString(input.note);
+    const paymentMethod = normalizeManualPaymentMethod(input.paymentMethod);
+
+    const metadata = (invoice.metadata || {}) as Record<string, unknown>;
+    const history = Array.isArray(metadata.manualStatusHistory)
+      ? metadata.manualStatusHistory.filter((entry) => entry && typeof entry === 'object')
+      : [];
+
+    const historyEntry = {
+      at: updatedAt,
+      by: updatedByEmail || null,
+      from: previousStatus,
+      to: input.status,
+      note: note || null,
+      paymentMethod: paymentMethod || null,
+      source: 'DASHBOARD_MANUAL',
+    };
+
+    const updatedInvoice = await this.invoicesService.updateStatus(invoice, input.status, {
+      manualStatusUpdate: historyEntry,
+      manualStatusHistory: [...history.slice(-49), historyEntry],
+    });
+
+    let receiptSent = false;
+    const shouldSendReceipt = input.sendReceipt !== false;
+
+    if (
+      shouldSendReceipt &&
+      previousStatus !== InvoiceStatus.PAID &&
+      updatedInvoice.status === InvoiceStatus.PAID
+    ) {
+      try {
+        await this.receiptService.sendPaidInvoiceReceipt(updatedInvoice.id);
+        receiptSent = true;
+      } catch (error) {
+        this.logger.error(
+          `Failed to send receipt after manual status update for invoice ${updatedInvoice.reference}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    return {
+      invoiceId: updatedInvoice.id,
+      reference: updatedInvoice.reference,
+      previousStatus,
+      currentStatus: updatedInvoice.status,
+      paymentMethod: paymentMethod || null,
+      note: note || null,
+      updatedBy: updatedByEmail || null,
+      updatedAt,
+      manual: true,
+      receiptSent,
+    };
+  }
+
   private async resolveStatusReference(
     invoiceId: string,
     invoice: Awaited<ReturnType<InvoicesService['findOneById']>>,
@@ -277,6 +346,28 @@ function firstNonEmptyString(values: unknown[]): string | null {
     if (typeof value === 'string' && value.trim().length > 0) {
       return value.trim();
     }
+  }
+
+  return null;
+}
+
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeManualPaymentMethod(value: unknown): ManualPaymentMethod | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if ((MANUAL_PAYMENT_METHODS as readonly string[]).includes(normalized)) {
+    return normalized as ManualPaymentMethod;
   }
 
   return null;

@@ -1,17 +1,21 @@
-import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Request, Response } from 'express';
 
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { UserRole } from '../common/enums/user-role.enum';
 import { InvoiceIdParamDto } from '../invoices/dto/invoice-id-param.dto';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { ListPaymentTransactionsQueryDto } from './dto/list-payment-transactions-query.dto';
+import { ManualUpdateInvoiceStatusDto } from './dto/manual-update-invoice-status.dto';
 import { SyncPaymentStatusDto } from './dto/sync-payment-status.dto';
 import { PaymentTransaction } from './payment-transaction.entity';
 import { PaymentsService } from './payments.service';
 import { PaymentTransactionsService } from './payment-transactions.service';
+
+type RequestWithUser = Request & { user?: AuthenticatedUser };
 
 @Controller('payments')
 export class PaymentsController {
@@ -74,6 +78,21 @@ export class PaymentsController {
   @Roles(UserRole.ADMIN)
   sendReceipt(@Param() params: InvoiceIdParamDto) {
     return this.paymentsService.resendReceipt(params.id);
+  }
+
+  @Post('invoices/:id/manual-status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  manualUpdateInvoiceStatus(
+    @Param() params: InvoiceIdParamDto,
+    @Body() body: ManualUpdateInvoiceStatusDto,
+    @Req() request: RequestWithUser,
+  ) {
+    return this.paymentsService.manualUpdateInvoiceStatus(
+      params.id,
+      body,
+      request.user?.email || null,
+    );
   }
 
   private buildCsv(items: PaymentTransaction[]): string {

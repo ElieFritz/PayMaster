@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { InvoiceStatusPill } from '@/components/invoice/invoice-status-pill';
+import { ManualStatusAction } from '@/components/invoice/manual-status-action';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { fetchBackendRaw } from '@/lib/api';
@@ -331,6 +332,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                               Audit
                             </Button>
                           </Link>
+                          {canEdit && (
+                            <ManualStatusAction
+                              invoiceId={invoice.id}
+                              currentStatus={invoice.status}
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>
